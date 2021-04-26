@@ -71,6 +71,7 @@ data = {
 }
 
 initialData = JSON.encode(data)
+isCollectingCards = false
 debugCommandEnabled = false
 
 function dump(o)
@@ -96,7 +97,7 @@ function setInfoText2(text)
 end
 
 function setTrumpText()
-    local trumpText = strings[data.language].trump[1] .. 
+    local trumpText = strings[data.language].trump[1] ..
         strings[data.language].suitNames[data.trumpSuit] ..
         ' <textcolor color="' .. suitColors[data.trumpSuit] .. '"><textsize size="100">' ..
         suitEmojis[data.trumpSuit] .. '</textsize></textcolor>' ..
@@ -105,7 +106,7 @@ function setTrumpText()
 end
 
 function setStartingPlayerText()
-    -- 
+    --
     local text = strings[data.language].startingPlayer[1] ..
         '<textcolor color="' .. playerColors[data.startingPlayer] .. '">' ..
         data.startingPlayerName ..
@@ -135,8 +136,8 @@ function updateHandTexts()
             ui.setValue("handText", "")
         end
     end
-end    
-    
+end
+
 
 function updateButtons()
     for k, guid in pairs(buttonGUIDs) do
@@ -149,10 +150,10 @@ function updateButtons()
         local hand = Player[color].getHandTransform(1)
         local position = hand.position
         local rotation = hand.rotation
-        
+
         position:scale(0.7)
         position.y = 0.97
-        
+
         obj.setPosition(position)
         obj.setRotation(rotation)
 
@@ -175,7 +176,7 @@ function checkTableChange()
     if lastPosition == nil or currentPosition != lastPosition then
         updateButtons()
         data.lastWhiteHandPosition = currentPosition
-        
+
         -- reset all hand texts
         for k, guid in pairs(buttonGUIDs) do
             getObjectFromGUID(guid).UI.setValue("handText", "")
@@ -210,7 +211,7 @@ function onLoad(json)
 
     updateTexts()
     updateButtons()
-    
+
     -- run once per second, forever
     Timer.create({
         identifier = "everySecond",
@@ -286,6 +287,16 @@ function collectCards()
     if #cards == 0 then
         return
     end
+    if isCollectingCards then
+        return
+    end
+    isCollectingCards = true
+    Timer.create({
+        identifier = "collectCards2",
+        function_name = "collectCards2",
+        delay = 2,
+        repetitions = 1
+    })
     local foundObjects = getObjectFromGUID(dumpAreaGUID).getObjects()
     if #foundObjects == 0 or foundObjects[1].type == "Card" then
         for k, card in pairs(cards) do
@@ -304,6 +315,10 @@ function collectCards()
     end
 end
 
+function collectCards2()
+    isCollectingCards = false
+end
+
 function newGame()
     if data.startingGame and false then
         return
@@ -320,7 +335,7 @@ function newGame()
             table.insert(cards, v)
         end
     end
-    
+
     -- collect cards
     deck = group(cards)[1]
     Timer.create({
@@ -453,7 +468,7 @@ function dealToPlayer(playerColor)
     if actualHandSize == 0 then
         return
     end
-    if not data.collectingCards then
+    if not isCollectingCards then
         local cardsOnTable = findCardsOnTable()
         if #cardsOnTable > 0 then
             for k, v in pairs(cardsOnTable) do
