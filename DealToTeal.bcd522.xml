@@ -1,0 +1,10 @@
+<Button onClick="onClick" width="240" height="60" fontSize="25" color="#42b19b" id="button1">
+    An Türkis austeilen
+</Button>
+<Button onClick="onClick" width="240" height="60" fontSize="30" color="#42b19b" id="button2">
+    Deal to Teal
+</Button>
+
+<Text color="#42b19b" fontSize="60" offsetXY="0 80" id="handText">
+
+</Text>

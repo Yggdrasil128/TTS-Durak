@@ -1,0 +1,10 @@
+<Button onClick="onClick" width="240" height="60" fontSize="25" color="#3c88ff" id="button1">
+    An Blau austeilen
+</Button>
+<Button onClick="onClick" width="240" height="60" fontSize="30" color="#3c88ff" id="button2">
+    Deal to Blue
+</Button>
+
+<Text color="#3c88ff" fontSize="60" offsetXY="0 80" id="handText">
+
+</Text>

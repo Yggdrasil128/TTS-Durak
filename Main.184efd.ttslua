@@ -1,0 +1,480 @@
+cardIDToSuit = {
+    [0]=3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 3, 3, 3, 0, 0, 0,
+    2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1
+}
+cardIDToValue = {
+    [0]=13, 12, 11, 1, 10, 13, 12, 11, 1, 10, 9, 8, 7, 6, 5, 9, 8, 7, 6, 5, 4, 3, 2, 3, 2, 4,
+    5, 4, 3, 2, 13, 12, 11, 1, 10, 13, 12, 11, 1, 10, 9, 8, 7, 6, 5, 9, 8, 7, 6, 4, 3, 2
+}
+suitEmojis = {[0]="♦", "♥", "♠", "♣"}
+suitColors = {[0]="#ff0000", "#ff0000", "#000000", "#000000"}
+playerColors = {
+    White="#ffffff", Brown="#6d3a12", Red="#d1130a", Orange="#eb6203",
+    Yellow="#e6e500", Green="#48b31b", Teal="#42b19b", Blue="#3c88ff",
+    Purple="#9b23f4", Pink="#ed70d0", Grey="#808080", Black="#404040"
+}
+
+strings = {
+    { -- german
+        buttons = {"NewGame_de", "CollectCards_de"},
+        suitNames = {[0]="Karo", "Herz", "Pik", "Kreuz"},
+        playerNames = {
+            White="Weiß", Brown="Braun", Red="Rot", Orange="Orange",
+            Yellow="Gelb", Green="Grün", Teal="Türkis", Blue="Blau",
+            Purple="Violett", Pink="Pink", Grey="Grau", Black="Schwarz"
+        },
+        welcome = "Willkommen bei Durak!",
+        madeBy = "Entwickelt von Yggdrasil128",
+        starting = "Starte neues Spiel...",
+        startingPlayer = {"", " beginnt."},
+        trump = {"", " ist Trumpf."},
+        newGame = "Neues Spiel",
+        collectCards = "Karten einsammeln",
+        dealTo = {"An ", " austeilen"},
+        languageTip = "If you want to set the language to english, type 'language english' in chat."
+    },
+    { -- english
+        buttons = {"NewGame_en", "CollectCards_en"},
+        suitNames = {[0]="Diamonds", "Hearts", "Spades", "Clubs"},
+        playerNames = {
+            White="White", Brown="Brown", Red="Red", Orange="Orange",
+            Yellow="Yellow", Green="Green", Teal="Teal", Blue="Blue",
+            Purple="Purple", Pink="Pink", Grey="Grey", Black="Black"
+        },
+        welcome = "Welcome to Durak!",
+        madeBy = "Made by Yggdrasil128",
+        starting = "Starting a new game...",
+        startingPlayer = {"", " to play."},
+        trump = {"", " is trump."},
+        newGame = "New game",
+        collectCards = "Collect cards",
+        dealTo = {"Deal to ", ""},
+        languageTip = "If you want to set the language to german, type 'language german' in chat."
+    }
+}
+
+drawAreaGUID = "34aa0a"
+dumpAreaGUID = "d9c33d"
+buttonGUIDs = {
+    White="7a391e", Red="5eb363", Orange="8c8bc5", Yellow="9e3dab", Green="60be3d",
+    Blue="902d27", Purple="3e25c3", Pink="4d1d43", Brown="4ca1b7", Teal="bcd522"
+}
+
+data = {
+    language = 2,
+    targetHandSize = 6,
+    isWelcomeScreen = true,
+    startingGame = false,
+    trumpSuit = nil,
+    startingPlayer = nil,
+    startingPlayerName = nil
+}
+
+initialData = JSON.encode(data)
+debugCommandEnabled = false
+
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
+function setInfoText(text)
+    text = '<textsize size="100"> </textsize>' .. text .. '<textsize size="100"> </textsize>'
+    self.UI.setValue("InfoText", text)
+end
+
+function setInfoText2(text)
+    self.UI.setValue("InfoText2", text)
+end
+
+function setTrumpText()
+    local trumpText = strings[data.language].trump[1] .. 
+        strings[data.language].suitNames[data.trumpSuit] ..
+        ' <textcolor color="' .. suitColors[data.trumpSuit] .. '"><textsize size="100">' ..
+        suitEmojis[data.trumpSuit] .. '</textsize></textcolor>' ..
+        strings[data.language].trump[2]
+    setInfoText(trumpText)
+end
+
+function setStartingPlayerText()
+    -- 
+    local text = strings[data.language].startingPlayer[1] ..
+        '<textcolor color="' .. playerColors[data.startingPlayer] .. '">' ..
+        data.startingPlayerName ..
+        '</textcolor>' ..
+        strings[data.language].startingPlayer[2]
+    setInfoText2(text)
+end
+
+function updateTexts()
+    if data.isWelcomeScreen then
+        setInfoText(strings[data.language].welcome)
+        print(strings[data.language].languageTip)
+    else
+        setTrumpText()
+    end
+    if data.startingPlayer then
+        setStartingPlayerText()
+    end
+end
+
+function updateHandTexts()
+    for k, color in pairs(Player.getAvailableColors()) do
+        local ui = getObjectFromGUID(buttonGUIDs[color]).UI
+        if Player[color].seated then
+            ui.setValue("handText", #Player[color].getHandObjects(1))
+        else
+            ui.setValue("handText", "")
+        end
+    end
+end    
+    
+
+function updateButtons()
+    for k, guid in pairs(buttonGUIDs) do
+        for language, v in pairs(strings) do
+            getObjectFromGUID(guid).UI.hide("button" .. language)
+        end
+    end
+    for k, color in pairs(Player.getAvailableColors()) do
+        local obj = getObjectFromGUID(buttonGUIDs[color])
+        local hand = Player[color].getHandTransform(1)
+        local position = hand.position
+        local rotation = hand.rotation
+        
+        position:scale(0.7)
+        position.y = 0.97
+        
+        obj.setPosition(position)
+        obj.setRotation(rotation)
+
+        obj.UI.show("button" .. data.language)
+    end
+    for language, v in pairs(strings) do
+        for k, id in pairs(v.buttons) do
+            if language == data.language then
+                self.UI.show(id)
+            else
+                self.UI.hide(id)
+            end
+        end
+    end
+end
+
+function checkTableChange()
+    local currentPosition = Player["White"].getHandTransform(1).position
+    local lastPosition = data.lastWhiteHandPosition
+    if lastPosition == nil or currentPosition != lastPosition then
+        updateButtons()
+        data.lastWhiteHandPosition = currentPosition
+        
+        -- reset all hand texts
+        for k, guid in pairs(buttonGUIDs) do
+            getObjectFromGUID(guid).UI.setValue("handText", "")
+        end
+    end
+end
+
+function everySecond()
+    checkTableChange()
+    updateHandTexts()
+end
+
+function getActivePlayers()
+    return getSeatedPlayers()
+    --return Player.getAvailableColors()
+end
+
+function onSave()
+    return JSON.encode(data)
+end
+
+function onLoad(json)
+    if json != "" then
+        data = JSON.decode(json)
+    end
+    if data.language == nil then
+        data.language = 2
+    end
+
+    printToAll(strings[data.language].welcome)
+    printToAll(strings[data.language].madeBy)
+
+    updateTexts()
+    updateButtons()
+    
+    -- run once per second, forever
+    Timer.create({
+        identifier = "everySecond",
+        function_name = "everySecond",
+        delay = 1,
+        repetitions = 0
+    })
+end
+
+function onChat(message, player)
+    -- only used for testing/deployment
+    if message == "reset" and player.steam_name == "Yggdrasil128" then
+        onLoad(initialData)
+        print(initialData)
+        return false
+    end
+    if debugCommandEnabled and message == "$" then
+        debug()
+        return false
+    end
+
+    -- admin commands
+    if player.admin or player.steam_name == "Yggdrasil128" then
+        if message == "language german" then
+            data.language = 1
+            updateTexts()
+            updateButtons()
+            return false
+        end
+        if message == "language german" then
+            data.language = 2
+            updateTexts()
+            updateButtons()
+            return false
+        end
+    end
+end
+
+function debug()
+
+end
+
+function findCardsOnTable()
+    excludedGUIDs = {}
+    for k, color in pairs(Player.getAvailableColors()) do
+        for k2, v in pairs(Player[color].getHandObjects(1)) do
+            excludedGUIDs[v.guid] = true
+        end
+    end
+    for k, v in pairs(getObjectFromGUID(drawAreaGUID).getObjects()) do
+        excludedGUIDs[v.guid] = true
+    end
+    for k, v in pairs(getObjectFromGUID(dumpAreaGUID).getObjects()) do
+        excludedGUIDs[v.guid] = true
+    end
+    cards = {}
+    for k, v in pairs(getObjects()) do
+        if (v.type == "Deck" or v.type == "Card") and not excludedGUIDs[v.guid] then
+            table.insert(cards, v)
+        end
+    end
+    return cards
+end
+
+function collectCards()
+    if data.startingPlayer then
+        setInfoText2("")
+        data.startingPlayer = nil
+        data.startingPlayerName = nil
+    end
+
+    local cards = findCardsOnTable()
+    if #cards == 0 then
+        return
+    end
+    local foundObjects = getObjectFromGUID(dumpAreaGUID).getObjects()
+    if #foundObjects == 0 or foundObjects[1].type == "Card" then
+        for k, card in pairs(cards) do
+            card.setPositionSmooth(Vector(1.5, 1, 1), false, false)
+            card.setRotation(Vector(0, 0, 0))
+        end
+        return
+    end
+    dump = foundObjects[1]
+    for k, v in pairs(cards) do
+        if v.type == "Card" then
+            v.putObject(dump)
+        else
+            group({dump, v})
+        end
+    end
+end
+
+function newGame()
+    if data.startingGame and false then
+        return
+    end
+    data.startingGame = true
+    data.isWelcomeScreen = false
+    setInfoText(strings[data.language].starting)
+    setInfoText2("")
+
+    -- find all cards
+    cards = {}
+    for k, v in pairs(getObjects()) do
+        if v.type == "Deck" or v.type == "Card" then
+            table.insert(cards, v)
+        end
+    end
+    
+    -- collect cards
+    deck = group(cards)[1]
+    Timer.create({
+        identifier     = "newGame2",
+        function_name  = "newGame2",
+        delay          = 1
+    })
+end
+
+function newGame2()
+    deck.setPositionSmooth(Vector(-1.5, 2, 1), false, false)
+    deck.setRotation(Vector(0, 0, 180))
+    Timer.create({
+        identifier     = "newGame3",
+        function_name  = "newGame3",
+        delay          = 1
+    })
+end
+
+function newGame3()
+    deck.shuffle()
+    Timer.create({
+        identifier     = "newGame4",
+        function_name  = "newGame4",
+        delay          = 1
+    })
+end
+
+function newGame4()
+    -- determine targetHandSize
+    if deck.getQuantity() > 52 then
+        data.targetHandSize = 8
+    else
+        data.targetHandSize = 6
+    end
+
+    -- deal cards to players
+    players = getActivePlayers()
+    for k, v in pairs(players) do
+        deck.deal(data.targetHandSize, v)
+    end
+    Timer.create({
+        identifier     = "newGame5",
+        function_name  = "newGame5",
+        delay          = 1
+    })
+end
+
+function newGame5()
+    -- determine trump suit
+    deck.takeObject({
+        position = Vector(1.5, 1, 1),
+        flip     = true,
+        callback_function = newGame6
+    })
+end
+
+function newGame6(trumpCard)
+    data.trumpSuit = cardIDToSuit[trumpCard.getData()["CardID"]]
+    setTrumpText()
+
+    Timer.create({
+        identifier     = "newGame7",
+        function_name  = "newGame7",
+        parameters     = {trumpCardGUID = trumpCard.guid},
+        delay          = 2
+    })
+end
+
+function newGame7(parameters)
+    -- put trump card back into deck
+    deck.putObject(getObjectFromGUID(parameters.trumpCardGUID))
+
+    Timer.create({
+        identifier     = "newGame8",
+        function_name  = "newGame8",
+        delay          = 1
+    })
+end
+
+function newGame8()
+    -- determine starting player (the player with the lowest trump card)
+    local currentLowestValue = 20
+    local currentLowestPlayers = players
+    for k, color in pairs(players) do
+        local cards = Player[color].getHandObjects(1)
+        for k2, card in pairs(cards) do
+            local cardID = card.getData()["CardID"]
+            local suit = cardIDToSuit[cardID]
+            local value = cardIDToValue[cardID]
+            if value == 1 then
+                -- ace is high
+                value = 14
+            end
+            if suit == data.trumpSuit then
+                if value < currentLowestValue then
+                    currentLowestValue = value
+                    currentLowestPlayers = {color}
+                elseif value == currentLowestValue then
+                    table.insert(currentLowestPlayers, color)
+                end
+            end
+        end
+    end
+    math.randomseed(os.time())
+    data.startingPlayer = currentLowestPlayers[math.random(#currentLowestPlayers)]
+    if Player[data.startingPlayer].seated then
+        data.startingPlayerName = Player[data.startingPlayer].steam_name
+    else
+        data.startingPlayerName = strings[data.language].playerNames[data.startingPlayer]
+    end
+
+    setStartingPlayerText()
+
+    data.startingGame = false
+end
+
+
+function dealToPlayer(playerColor)
+    if data.startingPlayer then
+        setInfoText2("")
+        data.startingPlayer = nil
+        data.startingPlayerName = nil
+    end
+
+    if not Player[playerColor].seated then
+        return
+    end
+    local actualHandSize = #Player[playerColor].getHandObjects(1)
+    if actualHandSize == 0 then
+        return
+    end
+    if not data.collectingCards then
+        local cardsOnTable = findCardsOnTable()
+        if #cardsOnTable > 0 then
+            for k, v in pairs(cardsOnTable) do
+                if v.type == "Card" then
+                    v.deal(1, playerColor)
+                else
+                    v.deal(v.getQuantity(), playerColor)
+                end
+            end
+            return
+        end
+    end
+    if actualHandSize >= data.targetHandSize then
+        return
+    end
+    local foundObjects = getObjectFromGUID(drawAreaGUID).getObjects()
+    if #foundObjects == 0 then
+        return
+    end
+    local stack = foundObjects[1]
+    local stackSize = stack.type == "Card" and 1 or stack.getQuantity()
+    local cardsToDeal = math.min(data.targetHandSize - actualHandSize, stackSize)
+    stack.deal(cardsToDeal, playerColor)
+end
