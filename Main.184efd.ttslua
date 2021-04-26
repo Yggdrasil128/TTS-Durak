@@ -31,8 +31,15 @@ strings = {
         newGame = "Neues Spiel",
         collectCards = "Karten einsammeln",
         dealTo = {"An ", " austeilen"},
-        languageTip = "If you want to set the language to english, type 'language english' in chat.",
-        drawStackCounter = {"Nachziehkarten: ", ""}
+        languageTip = "Wenn du die Sprache auf Englisch stellen willst, dann gib 'language english' in den Chat ein.",
+        drawStackCounter = {"Nachziehkarten: ", ""},
+        spawnCardsInfo = "Wenn du die Zahl der Spielkarten ändern willst, " ..
+            "dann gib 'cards N' in den Chat ein, " ..
+            "wobei N für die gewünschte Zahl der Karten steht. " ..
+            "Die typischsten Optionen sind 36, 52 und 104, " ..
+            "aber du kannst jede Zahl eingeben, die positiv und durch 4 teilbar ist.",
+        spawnCardsError = "Bitte gib eine positive, durch 4 teilbare Zahl an. Zum Beispiel: 'cards 36'",
+        notEnoughCards = "Nicht genügend Karten!"
     },
     { -- english
         buttons = {"NewGame_en", "CollectCards_en"},
@@ -51,7 +58,14 @@ strings = {
         collectCards = "Collect cards",
         dealTo = {"Deal to ", ""},
         languageTip = "If you want to set the language to german, type 'language german' in chat.",
-        drawStackCounter = {"Remaining draw cards: ", ""}
+        drawStackCounter = {"Remaining draw cards: ", ""},
+        spawnCardsInfo = "If you want to change the number of playing cards, " ..
+            "type 'cards N' in chat, " ..
+            "where N is the desired number of cards. " ..
+            "Typical options are 36, 52, and 104, " ..
+            "but you can enter any number that is positive and divisible by 4.",
+        spawnCardsError = "Please provide a positive number that is divisible by 4. For example: 'cards 36'",
+        notEnoughCards = "Not enough cards!"
     }
 }
 
@@ -66,28 +80,17 @@ data = {
     language = 2,
     targetHandSize = 6,
     isWelcomeScreen = true,
-    startingGame = false,
+    isStartingGame = false,
+    isCollectingCards = false,
+    showDrawStackCounter = false,
     trumpSuit = nil,
     startingPlayer = nil,
     startingPlayerName = nil
 }
 
 initialData = JSON.encode(data)
-isCollectingCards = false
-debugCommandEnabled = false
 
-function dump(o)
-   if type(o) == 'table' then
-      local s = '{ '
-      for k,v in pairs(o) do
-         if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
-      end
-      return s .. '} '
-   else
-      return tostring(o)
-   end
-end
+debugCommandEnabled = false
 
 function setInfoText(text)
     text = '<textsize size="100"> </textsize>' .. text .. '<textsize size="100"> </textsize>'
@@ -99,6 +102,9 @@ function setInfoText2(text)
 end
 
 function setTrumpText()
+    if not data.trumpSuit then
+        return
+    end
     local trumpText = strings[data.language].trump[1] ..
         strings[data.language].suitNames[data.trumpSuit] ..
         ' <textcolor color="' .. suitColors[data.trumpSuit] .. '"><textsize size="100">' ..
@@ -120,13 +126,16 @@ function updateTexts()
     if data.isWelcomeScreen then
         setInfoText(strings[data.language].welcome)
         setInfoText2("")
+        print("")
         print(strings[data.language].languageTip)
+        print("")
+        print(strings[data.language].spawnCardsInfo)
         return
     end
     setTrumpText()
     if data.startingPlayer then
         setStartingPlayerText()
-    else
+    elseif data.showDrawStackCounter then
         updateDrawStackCounter()
     end
 end
@@ -143,9 +152,6 @@ function updateHandTexts()
 end
 
 function updateDrawStackCounter()
-    if data.startingGame or data.isWelcomeScreen or data.startingPlayer then
-        return
-    end
     local foundObjects = getObjectFromGUID(drawAreaGUID).getObjects()
     local stackSize = 0
     if #foundObjects > 0 then
@@ -208,7 +214,9 @@ end
 function everySecond()
     checkTableChange()
     updateHandTexts()
-    updateDrawStackCounter()
+    if data.showDrawStackCounter then
+        updateDrawStackCounter()
+    end
 end
 
 function getActivePlayers()
@@ -228,8 +236,8 @@ function onLoad(json)
         data.language = 2
     end
 
-    printToAll(strings[data.language].welcome)
-    printToAll(strings[data.language].madeBy)
+    printToAll(strings[data.language].welcome, {r=0.5, g=0.7, b=1})
+    printToAll(strings[data.language].madeBy, {r=1, g=1, b=1})
 
     updateTexts()
     updateButtons()
@@ -269,11 +277,61 @@ function onChat(message, player)
             updateButtons()
             return false
         end
+        if message == "cards" or string.sub(message, 1, 6) == "cards " then
+            spawnCards(tonumber(string.sub(message, 7)))
+            return false
+        end
     end
 end
 
 function debug()
 
+end
+
+function spawnCards(n)
+    if n == nil or n <= 0 or n % 4 > 0 then
+        print("")
+        print(strings[data.language].spawnCardsError)
+        return
+    end
+    data.showDrawStackCounter = false
+
+    -- generate ordered cardID list
+    local suitOrder = {0, 1, 2, 3}
+    local valueOrder = {1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2}
+    local cardIDs = {}
+    for k, value in pairs(valueOrder) do
+        for k2, suit in pairs(suitOrder) do
+            for cardID = 0, 51 do
+                if cardIDToSuit[cardID] == suit and cardIDToValue[cardID] == value then
+                    table.insert(cardIDs, cardID)
+                    break
+                end
+            end
+        end
+    end
+    log(cardIDs)
+    -- delete all cards
+    for k, object in pairs(getObjects()) do
+        if object.type == "Deck" or object.type == "Card" then
+            object.destruct()
+        end
+    end
+    -- spawn cards
+    for i = 0, n-1 do
+        local cardID = cardIDs[1 + (i % 52)]
+        spawnObjectData({
+            data = {
+                Name = "Card",
+                CardID = cardID,
+                Transform = {
+                    posX = -1.5, posY = 2, posZ = 1,
+                    rotX = 0, rotY = 0, rotZ = 180,
+                    scaleX = 1, scaleY = 1, scaleZ = 1
+                }
+            }
+        })
+    end
 end
 
 function findCardsOnTable()
@@ -299,9 +357,13 @@ function findCardsOnTable()
 end
 
 function collectCards()
+    if data.isStartingGame then
+        return
+    end
     if data.startingPlayer then
         data.startingPlayer = nil
         data.startingPlayerName = nil
+        data.showDrawStackCounter = true
         updateDrawStackCounter()
     end
 
@@ -309,10 +371,10 @@ function collectCards()
     if #cards == 0 then
         return
     end
-    if isCollectingCards then
+    if data.isCollectingCards then
         return
     end
-    isCollectingCards = true
+    data.isCollectingCards = true
     Timer.create({
         identifier = "collectCards2",
         function_name = "collectCards2",
@@ -338,15 +400,16 @@ function collectCards()
 end
 
 function collectCards2()
-    isCollectingCards = false
+    data.isCollectingCards = false
 end
 
 function newGame()
-    if data.startingGame and false then
+    if data.isStartingGame then
         return
     end
-    data.startingGame = true
+    data.isStartingGame = true
     data.isWelcomeScreen = false
+    data.showDrawStackCounter = false
     setInfoText(strings[data.language].starting)
     setInfoText2("")
 
@@ -358,8 +421,21 @@ function newGame()
         end
     end
 
+    if #cards == 0 then
+        setInfoText(strings[data.language].notEnoughCards)
+        data.isStartingGame = false
+        return
+    end
+
     -- collect cards
     deck = group(cards)[1]
+
+    if not deck then
+        setInfoText(strings[data.language].notEnoughCards)
+        data.isStartingGame = false
+        return
+    end
+
     Timer.create({
         identifier     = "newGame2",
         function_name  = "newGame2",
@@ -396,6 +472,13 @@ function newGame4()
 
     -- deal cards to players
     players = getActivePlayers()
+
+    if deck.getQuantity() < data.targetHandSize * #players + 3 then
+        setInfoText(strings[data.language].notEnoughCards)
+        data.isStartingGame = false
+        return
+    end
+
     for k, v in pairs(players) do
         deck.deal(data.targetHandSize, v)
     end
@@ -472,14 +555,18 @@ function newGame8()
 
     setStartingPlayerText()
 
-    data.startingGame = false
+    data.isStartingGame = false
 end
 
 
 function dealToPlayer(playerColor)
+    if data.isStartingGame then
+        return
+    end
     if data.startingPlayer then
         data.startingPlayer = nil
         data.startingPlayerName = nil
+        data.showDrawStackCounter = true
         updateDrawStackCounter()
     end
 
@@ -490,7 +577,7 @@ function dealToPlayer(playerColor)
     if actualHandSize == 0 then
         return
     end
-    if not isCollectingCards then
+    if not data.isCollectingCards then
         local cardsOnTable = findCardsOnTable()
         if #cardsOnTable > 0 then
             for k, v in pairs(cardsOnTable) do
