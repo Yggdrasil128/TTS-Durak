@@ -31,7 +31,8 @@ strings = {
         newGame = "Neues Spiel",
         collectCards = "Karten einsammeln",
         dealTo = {"An ", " austeilen"},
-        languageTip = "If you want to set the language to english, type 'language english' in chat."
+        languageTip = "If you want to set the language to english, type 'language english' in chat.",
+        drawStackCounter = {"Nachziehkarten: ", ""}
     },
     { -- english
         buttons = {"NewGame_en", "CollectCards_en"},
@@ -49,7 +50,8 @@ strings = {
         newGame = "New game",
         collectCards = "Collect cards",
         dealTo = {"Deal to ", ""},
-        languageTip = "If you want to set the language to german, type 'language german' in chat."
+        languageTip = "If you want to set the language to german, type 'language german' in chat.",
+        drawStackCounter = {"Remaining draw cards: ", ""}
     }
 }
 
@@ -106,7 +108,6 @@ function setTrumpText()
 end
 
 function setStartingPlayerText()
-    --
     local text = strings[data.language].startingPlayer[1] ..
         '<textcolor color="' .. playerColors[data.startingPlayer] .. '">' ..
         data.startingPlayerName ..
@@ -118,12 +119,15 @@ end
 function updateTexts()
     if data.isWelcomeScreen then
         setInfoText(strings[data.language].welcome)
+        setInfoText2("")
         print(strings[data.language].languageTip)
-    else
-        setTrumpText()
+        return
     end
+    setTrumpText()
     if data.startingPlayer then
         setStartingPlayerText()
+    else
+        updateDrawStackCounter()
     end
 end
 
@@ -138,6 +142,23 @@ function updateHandTexts()
     end
 end
 
+function updateDrawStackCounter()
+    if data.startingGame or data.isWelcomeScreen or data.startingPlayer then
+        return
+    end
+    local foundObjects = getObjectFromGUID(drawAreaGUID).getObjects()
+    local stackSize = 0
+    if #foundObjects > 0 then
+        local stack = foundObjects[1]
+        stackSize = stack.type == "Card" and 1 or stack.getQuantity()
+    end
+    if stackSize == 0 then
+        setInfoText2("")
+    else
+        local s = strings[data.language].drawStackCounter[1] .. stackSize .. strings[data.language].drawStackCounter[2]
+        setInfoText2(s)
+    end
+end
 
 function updateButtons()
     for k, guid in pairs(buttonGUIDs) do
@@ -187,6 +208,7 @@ end
 function everySecond()
     checkTableChange()
     updateHandTexts()
+    updateDrawStackCounter()
 end
 
 function getActivePlayers()
@@ -278,9 +300,9 @@ end
 
 function collectCards()
     if data.startingPlayer then
-        setInfoText2("")
         data.startingPlayer = nil
         data.startingPlayerName = nil
+        updateDrawStackCounter()
     end
 
     local cards = findCardsOnTable()
@@ -456,9 +478,9 @@ end
 
 function dealToPlayer(playerColor)
     if data.startingPlayer then
-        setInfoText2("")
         data.startingPlayer = nil
         data.startingPlayerName = nil
+        updateDrawStackCounter()
     end
 
     if not Player[playerColor].seated then
