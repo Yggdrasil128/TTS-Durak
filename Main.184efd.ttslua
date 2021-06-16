@@ -6,6 +6,7 @@ cardIDToValue = {
     [0]=13, 12, 11, 1, 10, 13, 12, 11, 1, 10, 9, 8, 7, 6, 5, 9, 8, 7, 6, 5, 4, 3, 2, 3, 2, 4,
     5, 4, 3, 2, 13, 12, 11, 1, 10, 13, 12, 11, 1, 10, 9, 8, 7, 6, 5, 9, 8, 7, 6, 4, 3, 2
 }
+jokerCardID = 52
 suitEmojis = {[0]="♦", "♥", "♠", "♣"}
 suitColors = {[0]="#ff0000", "#ff0000", "#000000", "#000000"}
 playerColors = {
@@ -16,7 +17,7 @@ playerColors = {
 
 strings = {
     { -- german
-        buttons = {"NewGame_de", "CollectCards_de"},
+        buttons = {"NewGame_de_1", "CollectCards_de_1", "NewGame_de_2", "CollectCards_de_2"},
         suitNames = {[0]="Karo", "Herz", "Pik", "Kreuz"},
         playerNames = {
             White="Weiß", Brown="Braun", Red="Rot", Orange="Orange",
@@ -42,7 +43,7 @@ strings = {
         notEnoughCards = "Nicht genügend Karten!"
     },
     { -- english
-        buttons = {"NewGame_en", "CollectCards_en"},
+        buttons = {"NewGame_en_1", "CollectCards_en_1", "NewGame_en_2", "CollectCards_en_2"},
         suitNames = {[0]="Diamonds", "Hearts", "Spades", "Clubs"},
         playerNames = {
             White="White", Brown="Brown", Red="Red", Orange="Orange",
@@ -90,15 +91,17 @@ data = {
 
 initialData = JSON.encode(data)
 
-debugCommandEnabled = false
+debugCommandEnabled = true
 
 function setInfoText(text)
     text = '<textsize size="100"> </textsize>' .. text .. '<textsize size="100"> </textsize>'
-    self.UI.setValue("InfoText", text)
+    self.UI.setValue("InfoText_1", text)
+    self.UI.setValue("InfoText_2", text)
 end
 
 function setInfoText2(text)
-    self.UI.setValue("InfoText2", text)
+    self.UI.setValue("InfoText2_1", text)
+    self.UI.setValue("InfoText2_2", text)
 end
 
 function setTrumpText()
@@ -236,6 +239,8 @@ function onLoad(json)
         data.language = 2
     end
 
+    math.randomseed(os.time())
+
     printToAll(strings[data.language].welcome, {r=0.5, g=0.7, b=1})
     printToAll(strings[data.language].madeBy, {r=1, g=1, b=1})
 
@@ -285,7 +290,8 @@ function onChat(message, player)
 end
 
 function debug()
-
+    local card = Player["White"].getHandObjects(1)[1]
+    print(card.getData()["CardID"])
 end
 
 function spawnCards(n)
@@ -325,7 +331,7 @@ function spawnCards(n)
                 Name = "Card",
                 CardID = cardID,
                 Transform = {
-                    posX = -1.5, posY = 2, posZ = 1,
+                    posX = -1.5, posY = 2, posZ = 0,
                     rotX = 0, rotY = 0, rotZ = 180,
                     scaleX = 1, scaleY = 1, scaleZ = 1
                 }
@@ -384,7 +390,7 @@ function collectCards()
     local foundObjects = getObjectFromGUID(dumpAreaGUID).getObjects()
     if #foundObjects == 0 or foundObjects[1].type == "Card" then
         for k, card in pairs(cards) do
-            card.setPositionSmooth(Vector(1.5, 1, 1), false, false)
+            card.setPositionSmooth(Vector(1.5, 1, 0), false, false)
             card.setRotation(Vector(0, 0, 0))
         end
         return
@@ -444,7 +450,7 @@ function newGame()
 end
 
 function newGame2()
-    deck.setPositionSmooth(Vector(-1.5, 2, 1), false, false)
+    deck.setPositionSmooth(Vector(-1.5, 2, 0), false, false)
     deck.setRotation(Vector(0, 0, 180))
     Timer.create({
         identifier     = "newGame3",
@@ -492,14 +498,19 @@ end
 function newGame5()
     -- determine trump suit
     deck.takeObject({
-        position = Vector(1.5, 1, 1),
+        position = Vector(1.5, 1, 0),
         flip     = true,
         callback_function = newGame6
     })
 end
 
 function newGame6(trumpCard)
-    data.trumpSuit = cardIDToSuit[trumpCard.getData()["CardID"]]
+    local cardID = trumpCard.getData()["CardID"]
+    if cardID == jokerCardID then
+        data.trumpSuit = math.random(0, 3)
+    else
+        data.trumpSuit = cardIDToSuit[cardID]
+    end
     setTrumpText()
 
     Timer.create({
@@ -529,23 +540,24 @@ function newGame8()
         local cards = Player[color].getHandObjects(1)
         for k2, card in pairs(cards) do
             local cardID = card.getData()["CardID"]
-            local suit = cardIDToSuit[cardID]
-            local value = cardIDToValue[cardID]
-            if value == 1 then
-                -- ace is high
-                value = 14
-            end
-            if suit == data.trumpSuit then
-                if value < currentLowestValue then
-                    currentLowestValue = value
-                    currentLowestPlayers = {color}
-                elseif value == currentLowestValue then
-                    table.insert(currentLowestPlayers, color)
+            if cardID != jokerCardID then
+                local suit = cardIDToSuit[cardID]
+                local value = cardIDToValue[cardID]
+                if value == 1 then
+                    -- ace is high
+                    value = 14
+                end
+                if suit == data.trumpSuit then
+                    if value < currentLowestValue then
+                        currentLowestValue = value
+                        currentLowestPlayers = {color}
+                    elseif value == currentLowestValue then
+                        table.insert(currentLowestPlayers, color)
+                    end
                 end
             end
         end
     end
-    math.randomseed(os.time())
     data.startingPlayer = currentLowestPlayers[math.random(#currentLowestPlayers)]
     if Player[data.startingPlayer].seated then
         data.startingPlayerName = Player[data.startingPlayer].steam_name
@@ -574,9 +586,9 @@ function dealToPlayer(playerColor)
         return
     end
     local actualHandSize = #Player[playerColor].getHandObjects(1)
-    if actualHandSize == 0 then
-        return
-    end
+    --if actualHandSize == 0 then
+    --    return
+    --end
     if not data.isCollectingCards then
         local cardsOnTable = findCardsOnTable()
         if #cardsOnTable > 0 then

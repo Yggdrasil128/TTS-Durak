@@ -1,19 +1,39 @@
-<Button onClick="newGame" width="210" height="60" offsetXY="-145 -120" fontSize="30" color="#ffaaaa" id="NewGame_de">
+<Button onClick="newGame" width="210" height="60" offsetXY="-145 -220" fontSize="30" color="#ffaaaa" id="NewGame_de_1">
     Neues Spiel
 </Button>
-<Button onClick="collectCards" width="262" height="60" offsetXY="148 -120" fontSize="25" scale="0.8 1 1" color="#aaffaa" id="CollectCards_de">
+<Button onClick="collectCards" width="262" height="60" offsetXY="148 -220" fontSize="25" scale="0.8 1 1" color="#aaffaa" id="CollectCards_de_1">
     Karten einsammeln
 </Button>
-<Button onClick="newGame" width="210" height="60" offsetXY="-145 -120" fontSize="30" color="#ffaaaa" id="NewGame_en">
+<Button onClick="newGame" width="210" height="60" offsetXY="-145 -220" fontSize="30" color="#ffaaaa" id="NewGame_en_1">
     New game
 </Button>
-<Button onClick="collectCards" width="210" height="60" offsetXY="148 -120" fontSize="30" color="#aaffaa" id="CollectCards_en">
+<Button onClick="collectCards" width="210" height="60" offsetXY="148 -220" fontSize="30" color="#aaffaa" id="CollectCards_en_1">
     Collect cards
 </Button>
 
-<Text color="#ffffff" fontSize="60" offsetXY="0 -200" id="InfoText">
+<Button onClick="newGame" width="210" height="60" offsetXY="145 220" rotation="0 0 180" fontSize="30" color="#ffaaaa" id="NewGame_de_2">
+    Neues Spiel
+</Button>
+<Button onClick="collectCards" width="262" height="60" offsetXY="-148 220" rotation="0 0 180" fontSize="25" scale="0.8 1 1" color="#aaffaa" id="CollectCards_de_2">
+    Karten einsammeln
+</Button>
+<Button onClick="newGame" width="210" height="60" offsetXY="145 220" rotation="0 0 180" fontSize="30" color="#ffaaaa" id="NewGame_en_2">
+    New game
+</Button>
+<Button onClick="collectCards" width="210" height="60" offsetXY="-148 220" rotation="0 0 180" fontSize="30" color="#aaffaa" id="CollectCards_en_2">
+    Collect cards
+</Button>
+
+<Text color="#ffffff" fontSize="60" offsetXY="0 -300" id="InfoText_1">
 
 </Text>
-<Text color="#ffffff" fontSize="60" offsetXY="0 -300" id="InfoText2">
+<Text color="#ffffff" fontSize="60" offsetXY="0 -400" id="InfoText2_1">
+
+</Text>
+
+<Text color="#ffffff" fontSize="60" offsetXY="0 300" rotation="0 0 180" id="InfoText_2">
+
+</Text>
+<Text color="#ffffff" fontSize="60" offsetXY="0 400" rotation="0 0 180" id="InfoText2_2">
 
 </Text>
