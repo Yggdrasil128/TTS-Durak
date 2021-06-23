@@ -79,7 +79,8 @@ strings = {
 }
 
 drawAreaGUID = "34aa0a"
-dumpAreaGUID = "d9c33d"
+dumpAreaGUID = "d9c33d"
+
 buttonGUIDs = {
     White="7a391e", Red="5eb363", Orange="8c8bc5", Yellow="9e3dab", Green="60be3d",
     Blue="902d27", Purple="3e25c3", Pink="4d1d43", Brown="4ca1b7", Teal="bcd522"
@@ -158,7 +159,7 @@ end
 function updateHandTexts()
     for k, color in pairs(Player.getAvailableColors()) do
         local ui = getObjectFromGUID(buttonGUIDs[color]).UI
-        if Player[color].seated then
+        if testing or Player[color].seated then
             ui.setValue("handText", #Player[color].getHandObjects(1))
         else
             ui.setValue("handText", "")
@@ -275,7 +276,8 @@ function onChat(message, player)
         onLoad(initialData)
         print(initialData)
         return false
-    end
+    end
+
     if testing and message == "$" then
         debug()
         return false
@@ -426,13 +428,7 @@ function collectCards()
         delay = 2,
         repetitions = 1
     })
-    Timer.destroy("autoDealer_deal")
-    Timer.create({
-        identifier     = "autoDealer_deal",
-        function_name  = "autoDealer_deal",
-        parameters     = {dealtToPlayer = nil},
-        delay          = 1
-    })
+    autoDealer_deal({dealtToPlayer = nil})
     local foundObjects = getObjectFromGUID(dumpAreaGUID).getObjects()
     if #foundObjects == 0 or foundObjects[1].type == "Card" then
         for k, card in pairs(cards) do
@@ -646,13 +642,7 @@ function dealToPlayer(playerColor)
                     v.deal(v.getQuantity(), playerColor)
                 end
             end
-            Timer.destroy("autoDealer_deal")
-            Timer.create({
-                identifier     = "autoDealer_deal",
-                function_name  = "autoDealer_deal",
-                parameters     = {dealtToPlayer = playerColor},
-                delay          = 1
-            })
+            autoDealer_deal({dealtToPlayer = playerColor})
             return
         end
     end
@@ -692,7 +682,7 @@ function autoDealer_onCardEnterHand(playerColor)
     for i = #data.autoDealerMemory, 1, -1 do
         if data.autoDealerMemory[i][1] == playerColor then
             table.remove(data.autoDealerMemory, i)
-            autoDealer_printMemory()
+            --autoDealer_printMemory()
             return
         end
     end
@@ -734,36 +724,10 @@ function autoDealer_deal(parameters)
         end
     end
     autoDealer_init()
-    --print('playerOrder: ' .. JSON.encode(playerOrder))
-    --print('game: ' .. JSON.encode(game))
-
-    local timerIndex = 1
-
-    if #playerOrder < 3 then
-        if #playerOrder >= 1 then
-            Timer.create({
-                identifier     = "autoDealer" .. timerIndex,
-                function_name  = "autoDealer_dealToPlayer",
-                parameters     = {playerColor = playerOrder[1]},
-                delay          = 0.2 * timerIndex
-            })
-            timerIndex = timerIndex + 1
-        end
-        if #playerOrder >= 2 then
-            Timer.create({
-                identifier     = "autoDealer" .. timerIndex,
-                function_name  = "autoDealer_dealToPlayer",
-                parameters     = {playerColor = playerOrder[2]},
-                delay          = 0.2 * timerIndex
-            })
-            timerIndex = timerIndex + 1
-        end
-        return
-    end
 
     local defender = parameters.dealtToPlayer
     if not defender then
-        -- the defender is the last player to have played a card
+        -- if cards got dumped, then the defender is the last player to have played a card
         defender = game[#game][1]
     end
     local defenderIndex = 0
@@ -778,6 +742,43 @@ function autoDealer_deal(parameters)
         -- -> add to playerOrder
         table.insert(playerOrder, defender)
         defenderIndex = #playerOrder
+    end
+
+    --print('playerOrder: ' .. JSON.encode(playerOrder))
+    --print('game: ' .. JSON.encode(game))
+
+    local timerIndex = 0
+    local fDealDelayed = function(playerColor, amount)
+        if stackSize == 0 or autoDealer_handSize[playerColor] == 0 or autoDealer_handSize[playerColor] >= data.targetHandSize or playerColor == parameters.dealtToPlayer then
+            -- last condition: don't deal to the defender if he surrendered
+            return
+        end
+        if not amount then
+            amount = data.targetHandSize - autoDealer_handSize[playerColor]
+        end
+        if amount > stackSize then
+            amount = stackSize
+        end
+
+        autoDealer_handSize[playerColor] = autoDealer_handSize[playerColor] + amount
+        stackSize = stackSize - amount
+
+        Timer.create({
+            identifier     = "autoDealer" .. timerIndex,
+            function_name  = "autoDealer_dealToPlayer",
+            parameters     = {playerColor = playerColor, amount = amount},
+            delay          = 1 + 0.2 * timerIndex
+        })
+        timerIndex = timerIndex + 1
+    end
+
+    if #playerOrder < 3 then
+        if #playerOrder >= 1 then
+            fDealDelayed(playerOrder[1], nil)
+        end
+        if #playerOrder == 2 then
+            fDealDelayed(playerOrder[2], nil)
+        end
         return
     end
 
@@ -814,58 +815,24 @@ function autoDealer_deal(parameters)
         -- -> iterate game until (index) and deal accordingly
         for i = 1, index do
             if game[i][2] > 0 then
-                Timer.create({
-                    identifier     = "autoDealer" .. timerIndex,
-                    function_name  = "autoDealer_dealToPlayer",
-                    parameters     = {playerColor = game[i][1], amount = game[i][2]},
-                    delay          = 0.2 * timerIndex
-                })
-                timerIndex = timerIndex + 1
+                fDealDelayed(game[i][1], game[i][2])
             end
         end
     end
 
     -- deal to firstAttacker, secondAttacker, defender
-    Timer.create({
-        identifier     = "autoDealer" .. timerIndex,
-        function_name  = "autoDealer_dealToPlayer",
-        parameters     = {playerColor = firstAttacker},
-        delay          = 0.2 * timerIndex
-    })
-    timerIndex = timerIndex + 1
-    Timer.create({
-        identifier     = "autoDealer" .. timerIndex,
-        function_name  = "autoDealer_dealToPlayer",
-        parameters     = {playerColor = secondAttacker},
-        delay          = 0.2 * timerIndex
-    })
-    timerIndex = timerIndex + 1
-    Timer.create({
-        identifier     = "autoDealer" .. timerIndex,
-        function_name  = "autoDealer_dealToPlayer",
-        parameters     = {playerColor = defender},
-        delay          = 0.2 * timerIndex
-    })
-    timerIndex = timerIndex + 1
+    fDealDelayed(firstAttacker, nil)
+    fDealDelayed(secondAttacker, nil)
+    fDealDelayed(defender, nil)
 
     -- done :)
 end
 
 function autoDealer_dealToPlayer(parameters)
-    local actualHandSize = autoDealer_handSize[parameters.playerColor]
-    if actualHandSize == 0 or actualHandSize >= data.targetHandSize then
-        return
-    end
     local stack = getObjectFromGUID(drawAreaGUID).getObjects()
     if #stack == 0 then
         return
     end
     stack = stack[1]
-    local stackSize = stack.type == "Card" and 1 or stack.getQuantity()
-    local cardsToDeal = parameters.amount or (data.targetHandSize - actualHandSize)
-    cardsToDeal = math.min(cardsToDeal, stackSize)
-    stack.deal(cardsToDeal, parameters.playerColor)
-    autoDealer_handSize[parameters.playerColor] = autoDealer_handSize[parameters.playerColor] + cardsToDeal
-
-    --print(parameters.playerColor .. " " .. cardsToDeal)
+    stack.deal(parameters.amount, parameters.playerColor)
 end
