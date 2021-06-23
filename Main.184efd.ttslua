@@ -335,6 +335,13 @@ function onObjectLeaveZone(zone, object)
     end
 end
 
+function onScriptingButtonDown(index, color)
+    if index == 10 then
+        -- Numpad-Zero (default)
+        collectCards()
+    end
+end
+
 function spawnCards(n)
     if n == nil or n <= 0 then
         print("")
