@@ -1,1 +1,106 @@
 <!-- Xml UI. See documentation: https://api.tabletopsimulator.com/ui/introUI/ -->
+
+<Button width="160" height="40" fontSize="20"
+    rectAlignment="LowerRight" offsetXY="-80 5"
+    visibility="Admin" onClick="toggleSettings">
+    Durak Settings
+</Button>
+
+<TableLayout width="300" height="320" columnWidths="150 150" cellPadding="5 5 5 5"
+    rectAlignment="LowerRight" offsetXY="-5 60"
+    cellBackgroundColor="clear" rowBackgroundColor="white"
+    visibility="Admin" active="false" id="settingsTable">
+    <Defaults>
+        <Row preferredHeight="40" />
+        <Text alignment="MiddleLeft" />
+    </Defaults>
+    <Row>
+        <Cell columnSpan="2">
+            <Text fontSize="20" alignment="MiddleCenter">Durak Settings</Text>
+            <Button ignoreLayout="true" width="30" height="30" fontSize="20"
+                rectAlignment="MiddleRight" offsetXY="-5 0"
+                textColor="red" onClick="toggleSettings">X</Button>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+            <Text>Table UI Language</Text>
+        </Cell>
+        <Cell>
+            <Dropdown id="DropdownLanguage" onValueChanged="onSelectLanguage">
+                <Option selected="true">English</Option>
+                <Option>Deutsch</Option>
+            </Dropdown>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+            <Text>Cards on hand</Text>
+        </Cell>
+        <Cell>
+            <TableLayout columnWidths="120 20" cellBackgroundColor="clear">
+                <Row preferredHeight="30">
+                    <Cell>
+                        <Slider minValue="2" maxValue="10" value="6" wholeNumbers="true"
+                            id="SliderCardsOnHand" onValueChanged="onSelectCardsOnHand"/>
+                    </Cell>
+                    <Cell>
+                        <Text alignment="MiddleRight" id="TextCardsOnHand">6</Text>
+                    </Cell>
+                </Row>
+            </TableLayout>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+            <Text>Auto Dealer</Text>
+        </Cell>
+        <Cell>
+            <Toggle id="ToggleAutodealer" onValueChanged="onSelectAutodealer">Enabled</Toggle>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell columnSpan="2">
+            <Text fontSize="20" alignment="MiddleCenter">Spawn Cards</Text>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+            <Text>Number of cards</Text>
+        </Cell>
+        <Cell>
+            <Dropdown onValueChanged="onSelectNoOfCards">
+                <Option selected="true">36</Option>
+                <Option>52</Option>
+                <Option>104</Option>
+            </Dropdown>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+            <Text>Number of jokers</Text>
+        </Cell>
+        <Cell>
+            <TableLayout columnWidths="120 20" cellBackgroundColor="clear">
+                <Row preferredHeight="30">
+                    <Cell>
+                        <Slider minValue="0" maxValue="10" value="0" wholeNumbers="true"
+                            id="SliderNoOfJokers" onValueChanged="onSelectNoOfJokers"/>
+                    </Cell>
+                    <Cell>
+                        <Text alignment="MiddleRight" id="TextNoOfJokers">0</Text>
+                    </Cell>
+                </Row>
+            </TableLayout>
+        </Cell>
+    </Row>
+    <Row>
+        <Cell>
+        </Cell>
+        <Cell columnSpan="2">
+            <Button fontSize="16" onClick="spawnCardsButtonClick">
+                Spawn Cards
+            </Button>
+        </Cell>
+    </Row>
+</TableLayout>

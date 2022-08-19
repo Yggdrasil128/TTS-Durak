@@ -1,11 +1,72 @@
---[[ Lua code. See documentation: https://api.tabletopsimulator.com/ --]]
+selected = {
+    language = 1,
+    cardsOnHand = 6,
+    autodealer = false,
 
---[[ The onLoad event is called after the game save finishes loading. --]]
-function onLoad()
-    --[[ print('onLoad!') --]]
+    noOfCards = 36,
+    noOfJokers = 0
+}
+
+function initSettings(data)
+    selected.language = data.language
+    selected.cardsOnHand = data.targetHandSize
+    selected.autodealer = data.autoDealerEnabled
+
+    UI.setAttribute("SliderCardsOnHand", "value", selected.cardsOnHand)
+    UI.setValue("TextCardsOnHand", selected.cardsOnHand)
+
+    UI.setAttribute("ToggleAutodealer", "isOn", selected.autodealer)
+
+    -- I know this the most ass-backwards way of changing the selected option for a Dropdown, but apparently there is no other way.
+    local xml = UI.getXmlTable()
+    if selected.language == 1 then
+        xml[2].children[3].children[2].children[1].children[1].attributes = {}
+        xml[2].children[3].children[2].children[1].children[2].attributes = {selected = "true"}
+    else
+        xml[2].children[3].children[2].children[1].children[1].attributes = {selected = "true"}
+        xml[2].children[3].children[2].children[1].children[2].attributes = {}
+    end
+    UI.setXmlTable(xml, nil)
 end
 
---[[ The onUpdate event is called once per frame. --]]
-function onUpdate()
-    --[[ print('onUpdate loop!') --]]
+function toggleSettings()
+    local active = UI.getAttribute("settingsTable", "active")
+    if active == "true" then
+        UI.setAttribute("settingsTable", "active", "false")
+    else
+        UI.setAttribute("settingsTable", "active", "true")
+    end
+end
+
+function onSelectLanguage(player, value)
+    if value == "English" then
+        selected.language = 2
+    else
+        selected.language = 1
+    end
+    getObjectFromGUID("184efd").call("setLanguage", selected.language)
+end
+
+function onSelectCardsOnHand(player, value)
+    selected.cardsOnHand = tonumber(value)
+    UI.setValue("TextCardsOnHand", value)
+    getObjectFromGUID("184efd").call("setTargetHandSize", tonumber(value))
+end
+
+function onSelectAutodealer(player, value)
+    selected.autodealer = value
+    getObjectFromGUID("184efd").call("setEnableAutoDealer", value)
+end
+
+function onSelectNoOfCards(player, value)
+    selected.noOfCards = tonumber(value)
+end
+
+function onSelectNoOfJokers(player, value)
+    selected.noOfJokers = tonumber(value)
+    UI.setValue("TextNoOfJokers", value)
+end
+
+function spawnCardsButtonClick()
+    getObjectFromGUID("184efd").call("spawnCards", {selected.noOfCards, selected.noOfJokers})
 end

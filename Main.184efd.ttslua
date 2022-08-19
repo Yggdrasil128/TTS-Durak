@@ -32,17 +32,10 @@ strings = {
         newGame = "Neues Spiel",
         collectCards = "Karten einsammeln",
         dealTo = {"An ", " austeilen"},
-        languageTip = "Wenn du die Sprache auf Englisch stellen willst, dann gib 'language english' in den Chat ein.",
+        settingsTip = "Um Einstellungen zu ändern, klicke auf den Button in der unteren rechten Ecke.",
         drawStackCounter = {"Nachziehkarten: ", ""},
-        spawnCardsInfo = "Wenn du die Zahl der Spielkarten ändern willst, " ..
-            "dann gib 'cards N' in den Chat ein, " ..
-            "wobei N für die gewünschte Zahl der Karten steht. " ..
-            "Die typischsten Optionen sind 36, 52 und 104, " ..
-            "aber du kannst jede positive Ganzzahl eingeben.",
         spawnCardsError = "Bitte gib eine positive Ganzzahl an. Zum Beispiel: 'cards 36'",
         notEnoughCards = "Nicht genügend Karten!",
-        autoDealerInfo = "Um das automatische Austeilen von Karten zu aktivieren, " ..
-            "gib 'autodealer on' in den Chat ein. Du kannst es danach wieder mit 'autodealer off' deaktivieren.",
         autoDealerEnabled = "AutoDealer wurde aktiviert.",
         autoDealerDisabled = "AutoDealer wurde deaktiviert."
     },
@@ -62,17 +55,10 @@ strings = {
         newGame = "New game",
         collectCards = "Collect cards",
         dealTo = {"Deal to ", ""},
-        languageTip = "If you want to set the language to german, type 'language german' in chat.",
+        settingsTip = "For settings, click the button in the bottom right corner.",
         drawStackCounter = {"Remaining draw cards: ", ""},
-        spawnCardsInfo = "If you want to change the number of playing cards, " ..
-            "type 'cards N' in chat, " ..
-            "where N is the desired number of cards. " ..
-            "Typical options are 36, 52, and 104, " ..
-            "but you can enter any positive integer.",
         spawnCardsError = "Please provide a positive integer. For example: 'cards 36'",
         notEnoughCards = "Not enough cards!",
-        autoDealerInfo = "To enable automatic card dealing, " ..
-            "type 'autodealer on' in chat. To disable it afterwards, type 'autodealer off'.",
         autoDealerEnabled = "AutoDealer enabled.",
         autoDealerDisabled = "AutoDealer disabled."
     }
@@ -141,11 +127,7 @@ function updateTexts()
         setInfoText(strings[data.language].welcome)
         setInfoText2("")
         print("")
-        print(strings[data.language].languageTip)
-        print("")
-        print(strings[data.language].spawnCardsInfo)
-        print("")
-        print(strings[data.language].autoDealerInfo)
+        print(strings[data.language].settingsTip)
         return
     end
     setTrumpText()
@@ -267,6 +249,8 @@ function onLoad(json)
         delay = 1,
         repetitions = 0
     })
+
+    Global.call("initSettings", data)
 end
 
 function onChat(message, player)
@@ -285,37 +269,38 @@ function onChat(message, player)
 
     -- admin commands
     if player.admin or player.steam_name == "Yggdrasil128" then
-        if message == "language german" then
-            data.language = 1
-            updateTexts()
-            updateButtons()
-            return false
-        end
-        if message == "language english" then
-            data.language = 2
-            updateTexts()
-            updateButtons()
-            return false
-        end
         if message == "cards" or string.sub(message, 1, 6) == "cards " then
-            spawnCards(tonumber(string.sub(message, 7)))
-            return false
-        end
-        if message == "autodealer" or string.sub(message, 1, 11) == "autodealer " then
-            local param = string.sub(message, 12)
-            if param == "on" or param == "1" then
-                data.autoDealerEnabled = true
-                autoDealer_init()
-                printToColor(strings[data.language].autoDealerEnabled, player.color)
-            elseif param == "off" or param == "0" then
-                data.autoDealerEnabled = false
-                printToColor(strings[data.language].autoDealerDisabled, player.color)
-            else
-                printToColor(strings[data.language].autoDealerInfo, player.color)
+            local s = string.sub(message, 7)
+            local j = 0
+            local i = string.find(s, " ", 1, true)
+            if i then
+                j = tonumber(string.sub(s, i+1))
+                if j == nil then
+                    j = 0
+                end
+                s = string.sub(s, 1, i-1)
             end
-
+            local n = tonumber(s)
+            spawnCards({n, j})
             return false
         end
+    end
+end
+
+function setLanguage(langID)
+    data.language = langID
+    updateTexts()
+    updateButtons()
+end
+
+function setTargetHandSize(value)
+    data.targetHandSize = value
+end
+
+function setEnableAutoDealer(value)
+    data.autoDealerEnabled = value
+    if value then
+        autoDealer_init()
     end
 end
 
@@ -342,8 +327,10 @@ function onScriptingButtonDown(index, color)
     end
 end
 
-function spawnCards(n)
-    if n == nil or n <= 0 then
+function spawnCards(params)
+    local n = params[1]
+    local j = params[2]
+    if n == nil or n <= 0 or j == nil or j < 0 then
         print("")
         print(strings[data.language].spawnCardsError)
         return
@@ -378,6 +365,20 @@ function spawnCards(n)
             data = {
                 Name = "Card",
                 CardID = cardID,
+                Transform = {
+                    posX = -1.5, posY = 2, posZ = 0,
+                    rotX = 0, rotY = 0, rotZ = 180,
+                    scaleX = 1, scaleY = 1, scaleZ = 1
+                }
+            }
+        })
+    end
+    -- spawn jokers
+    for i = 0, j-1 do
+        spawnObjectData({
+            data = {
+                Name = "Card",
+                CardID = jokerCardID,
                 Transform = {
                     posX = -1.5, posY = 2, posZ = 0,
                     rotX = 0, rotY = 0, rotZ = 180,
@@ -518,13 +519,6 @@ function newGame3()
 end
 
 function newGame4()
-    -- determine targetHandSize
-    if deck.getQuantity() > 52 then
-        data.targetHandSize = 8
-    else
-        data.targetHandSize = 6
-    end
-
     -- deal cards to players
     players = getActivePlayers()
 
